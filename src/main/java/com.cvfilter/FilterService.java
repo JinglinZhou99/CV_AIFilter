@@ -24,6 +24,7 @@ public class FilterService {
     @Value("${api.key}")
     private String apiKey;
 
+
     private static final List<String> REQUIRED_SKILLS = Arrays.asList("Java", "Spring", "SQL");
     private static final List<String> REQUIRED_DEGREES = Arrays.asList("Bachelor", "Master", "PhD");
 
