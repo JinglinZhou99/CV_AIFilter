@@ -10,6 +10,7 @@ import org.springframework.web.client.RestTemplate;
 import java.io.File;
 
 @SpringBootApplication(exclude = {DataSourceAutoConfiguration.class})
+
 public class ResumeFilterApplication {
     public static void main(String[] args) {
         SpringApplication.run(ResumeFilterApplication.class, args);
@@ -45,12 +46,15 @@ public class ResumeFilterApplication {
 
             for (File file : files) {
                 System.out.println("Processing: " + file.getName());
-                boolean matches = filterService.matchesCriteria(file);
-                if (matches) {
+                FilterService.AnalysisResult result = filterService.analyzeCriteria(file);
+
+                if (result.isMatch()) {
                     matchCount++;
                     System.out.println("✅ MATCH: " + file.getName());
                 } else {
                     System.out.println("❌ NO MATCH: " + file.getName());
+                    System.out.println("  Reason: " + result.getReason());
+                    System.out.println();
                 }
             }
 
