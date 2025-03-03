@@ -1,16 +1,21 @@
 package com.cvfilter;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.File;
 import java.io.IOException;
+
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -41,22 +46,43 @@ public class FilterService {
         }
     }
 
+
     private boolean aiBasedFiltering(String text) {
         try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Authorization", "Bearer " + apiKey);
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            // Prepare the request body
             Map<String, Object> request = Map.of(
-                    "api_key", apiKey,
-                    "text", text,
-                    "instruction", "Analyze the resume and determine if it matches the following criteria: " +
-                            "Skills required: " + String.join(", ", REQUIRED_SKILLS) + ". " +
-                            "Education required: At least one of " + String.join(", ", REQUIRED_DEGREES) + "."
+                    "model", "deepseek-chat",
+                    "messages", List.of(
+                            Map.of("role", "system", "content", "You are a helpful assistant that analyzes resumes and determines if they match specific criteria."),
+                            Map.of("role", "user", "content", "Analyze the following resume text and determine if it matches the following criteria:\n\nSkills required: Java, Spring, SQL.\nEducation required: At least one of Bachelor, Master, PhD.\n\nResume text:\n" + text)
+                    ),
+                    "temperature", 0.7,
+                    "max_tokens", 150
             );
 
-            Map response = restTemplate.postForObject(apiUrl, request, Map.class);
-            return response != null && Boolean.TRUE.equals(response.get("matches"));
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
+            String response = restTemplate.postForObject(apiUrl, entity, String.class);
+
+            // Parse the response
+            ObjectMapper mapper = new ObjectMapper();
+            Map<String, Object> responseMap = mapper.readValue(response, Map.class);
+
+            // Extract the assistant's message
+            Map<String, Object> choices = ((List<Map<String, Object>>) responseMap.get("choices")).get(0);
+            Map<String, Object> message = (Map<String, Object>) choices.get("message");
+            String content = (String) message.get("content");
+
+            // Check if the response indicates a match
+            return content.toLowerCase().contains("matches the specified criteria");
         } catch (Exception e) {
             System.err.println("Error calling AI service: " + e.getMessage());
             return false;
         }
     }
+
 }
 
