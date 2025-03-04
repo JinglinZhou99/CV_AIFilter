@@ -8,6 +8,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.File;
+import java.util.*;
+import java.util.concurrent.*;
 
 @SpringBootApplication(exclude = {DataSourceAutoConfiguration.class})
 
@@ -42,25 +44,57 @@ public class ResumeFilterApplication {
             }
 
             System.out.println("Starting to scan " + files.length + " resumes...");
-            int matchCount = 0;
+
+            // create the pool - according to cpu cores
+            int processors = Runtime.getRuntime().availableProcessors();
+            ExecutorService executorService = Executors.newFixedThreadPool(processors);
+
+            // process the result parallel
+            ConcurrentHashMap<File, FilterService.AnalysisResult> resultMap = new ConcurrentHashMap<>();
+            CountDownLatch latch = new CountDownLatch(files.length);
 
             for (File file : files) {
-                System.out.println("Processing: " + file.getName());
-                FilterService.AnalysisResult result = filterService.analyzeCriteria(file);
-
-                if (result.isMatch()) {
-                    matchCount++;
-                    System.out.println("✅ MATCH: " + file.getName());
-                } else {
-                    System.out.println("❌ NO MATCH: " + file.getName());
-                    System.out.println("  Reason: " + result.getReason());
-                    System.out.println();
-                }
+                executorService.submit(() -> {
+                    try {
+                        System.out.println("Processing: " + file.getName());
+                        FilterService.AnalysisResult result = filterService.analyzeCriteria(file);
+                        resultMap.put(file, result);
+                    } catch (Exception e) {
+                        System.err.println("Error processing " + file.getName() + ": " + e.getMessage());
+                    } finally {
+                        latch.countDown();
+                    }
+                });
             }
 
-            System.out.println("\nSummary:");
-            System.out.println("Total resumes: " + files.length);
-            System.out.println("Matching resumes: " + matchCount);
+            // wait for all works done
+            try {
+                latch.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                System.err.println("Processing was interrupted");
+            }
+
+            // shut down
+            executorService.shutdown();
+
+            // sort the results
+            List<Map.Entry<File, FilterService.AnalysisResult>> results =
+                    new ArrayList<>(resultMap.entrySet());
+            results.sort((a, b) -> Integer.compare(b.getValue().getScore(), a.getValue().getScore()));
+
+            // display the sorted results
+            System.out.println("\n===== RESULTS (SORTED BY MATCH SCORE) =====\n");
+
+            for (Map.Entry<File, FilterService.AnalysisResult> entry : results) {
+                File file = entry.getKey();
+                FilterService.AnalysisResult result = entry.getValue();
+
+                System.out.println(file.getName() + " (Score: " + result.getScore() + "/100)");
+                System.out.println("  Reason: " + result.getReason());
+                System.out.println();
+            }
+
         };
     }
 }
