@@ -44,9 +44,6 @@ public class FilterService {
             this.score = score;
         }
 
-        public boolean isMatch() {
-            return matches;
-        }
 
         public String getReason() {
             return reason;
@@ -72,18 +69,18 @@ public class FilterService {
             HttpHeaders headers = new HttpHeaders();
             headers.set("Authorization", "Bearer " + apiKey);
             headers.setContentType(MediaType.APPLICATION_JSON);
-
             Map<String, Object> request = Map.of(
                     "model", "deepseek-chat",
                     "messages", List.of(
                             Map.of("role", "system", "content", "You are a helpful assistant that analyzes resumes and determines if they match specific criteria."),
-                            Map.of("role", "user", "content", "Analyze the following resume text and determine if it matches the following criteria:\n\n" +
-                                    "1. Education Background: Associate degree or above in Environmental Science, Safety Engineering, Industrial Engineering, or related fields.\n\n" +
-                                    "2. Work Experience: More than 3 years of EHS (Environment, Health, and Safety) work experience. Priority will be given to candidates with manufacturing industry experience. Fresh graduates with relevant internship experience or EHS-related certificates will also be considered.\n\n" +
-                                    "3. Professional Skills: Knowledge of Malaysian EHS laws, regulations and standards; familiarity with safety inspection, hazard identification, accident investigation, and other EHS work processes and methods. Basic knowledge of environmental management and occupational health, ability to identify common safety hazards and environmental issues.\n\n" +
-                                    "4. Other Abilities: Conscientious and responsible with strong accountability and execution; good team collaboration and communication skills; proficient in office software such as Word, Excel, PPT, etc.\n\n" +
+                            Map.of("role", "user", "content", "Analyze the following resume text and determine if it matches the following criteria in order of importance:\n\n" +
+                                    "1. B2B Experience: Over 8 years of experience in professional services, fintech, payment, or e-commerce industries with a proven track record of success.\n\n" +
+                                    "2. Language Skills: Fluent in English and Indonesian.\n\n" +
+                                    "3. Network Requirements: High-level connections with telecommunications operators, payment companies, and e-commerce companies, such as heads of technology departments, data departments, or C-level executives.\n\n" +
+                                    "4. Preferred Background: Priority given to candidates with startup experience who have contributed to successful businesses.\n\n" +
+                                    "5. Additional Skills: Experience in data source partnerships is highly preferred. Ability to learn quickly and grow rapidly in new industries and markets. Capable of conducting in-depth research, identifying root problems, and proposing effective solutions. Deep business understanding and data-driven mindset preferred.\n\n" +
                                     "Resume text:\n" + text + "\n\n" +
-                                    "Give a match score from 0-100 on how well this resume matches our requirements. Then, briefly summary this candidate in 50 words.")
+                                    "Give a match score from 0-100 on how well this resume matches our requirements. Then, briefly summary this candidate in 50 words in Chinese.")
                     ),
                     "temperature", 0.3
             );
